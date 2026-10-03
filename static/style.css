@@ -2,7 +2,7 @@
 :root { color-scheme: dark; --bg: #0e1011; --line: #3b3b3b; --panel: #292929; --text: #ededed; --muted: #b0b0b0; }
 * { box-sizing: border-box; }
 body { margin: 0 auto; padding: 16px 24px; max-width: 1600px; height: 100vh; height: 100dvh; display: grid; grid-template-rows: 66px auto; align-content: start; gap: 14px; background: var(--bg); color: var(--text); font-family: 'Inter', system-ui, -apple-system, sans-serif; font-size: 12px; }
-header { display: flex; justify-content: space-between; align-items: center; gap: 18px; }
+header { display: flex; justify-content: flex-start; align-items: center; gap: 18px; }
 h1 { font-family: 'Inter', system-ui, -apple-system, sans-serif; font-size: clamp(24px,2.7vw,40px); font-weight: 700; margin: 0; letter-spacing: -1px; }
 .brand-logo { width: 116px; height: auto; display: block; flex: none; }
 main { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); grid-template-rows: auto 206px; align-content: start; width: 100%; margin-inline: auto; gap: 14px; min-height: 0; }
