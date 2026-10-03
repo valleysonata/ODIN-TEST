@@ -12,18 +12,13 @@
   <img class="brand-logo" src="{{ url_for('static', filename='odin-logo.png') }}" alt="ODIN Technologies" width="307" height="167">
 </header>
 <main>
-  <section class="section" aria-labelledby="cameras-title">
-    <h2 id="cameras-title" data-label="Camera feeds">Camera feeds</h2>
-    <div class="camera-grid">
-      <div>
-        <div class="panel-head"><h3>RGB</h3><span id="fps-rgb" class="muted">—</span></div>
-        <img class="feed" src="{{ url_for('video', key='rgb') }}" alt="RGB camera feed">
-      </div>
-      <div>
-        <div class="panel-head"><h3>NoIR</h3><span id="fps-noir" class="muted">—</span></div>
-        <img class="feed" src="{{ url_for('video', key='noir') }}" alt="NoIR camera feed">
-      </div>
-    </div>
+  <section class="section" aria-labelledby="rgb-title">
+    <div class="panel-head"><h2 id="rgb-title">RGB</h2><span id="fps-rgb" class="muted">—</span></div>
+    <img class="feed" src="{{ url_for('video', key='rgb') }}" alt="RGB camera feed">
+  </section>
+  <section class="section" aria-labelledby="noir-title">
+    <div class="panel-head"><h2 id="noir-title">NoIR</h2><span id="fps-noir" class="muted">—</span></div>
+    <img class="feed" src="{{ url_for('video', key='noir') }}" alt="NoIR camera feed">
   </section>
   <section class="section" aria-labelledby="map-title">
     <div class="panel-head"><h2 id="map-title" data-label="NDVI map">NDVI map</h2><span class="muted" id="mean-ndvi">—</span></div>
