@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ODIN · 雙光譜 NDVI 監看</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <small data-i18n="ODIN · 光學雙光譜智慧節點">ODIN · 光學雙光譜智慧節點</small>
+    <h1 data-i18n="雙光譜 NDVI 監看">雙光譜 NDVI 監看</h1>
+    <small data-i18n="NoIR + USB 攝影機 → 通道相減 → NDVI 熱圖">NoIR + USB 攝影機 → 通道相減 → NDVI 熱圖</small>
+  </div>
+  <div class="tools">
+    <select id="language" aria-label="Language / 語言">
+      <option value="zh-Hant">中文</option>
+      <option value="en">English</option>
+    </select>
+    <span id="mode-badge" class="badge {{ 'ok' if state.ndvi_online else 'warn' }}">
+      {{ '● NDVI ONLINE' if state.ndvi_online else '● SINGLE SENSOR' }}
+    </span>
+    <span id="calib-badge" class="badge {{ 'ok' if state.calibrated else 'warn' }}">
+      {{ '● CALIBRATED' if state.calibrated else '● NOT CALIBRATED' }}
+    </span>
+  </div>
+</header>
+
+{% if not state.ndvi_online %}
+<div class="notice warn">
+  <strong data-i18n="NDVI 離線">NDVI 離線</strong> —
+  <span data-i18n="NDVI 需要兩顆感測器。目前只開到一顆，熱圖已停用，不以假資料取代。">NDVI 需要兩顆感測器。目前只開到一顆，熱圖已停用，不以假資料取代。</span>
+</div>
+{% elif not state.calibrated %}
+<div class="notice warn">
+  <strong data-i18n="尚未校準">尚未校準</strong> —
+  <span data-i18n="兩張影像尚未註冊。NDVI 會在未對齊的畫面上計算，僅供煙霧測試，不可當讀數。執行 python calibrate.py。">兩張影像尚未註冊。NDVI 會在未對齊的畫面上計算，僅供煙霧測試，不可當讀數。執行 <code>python calibrate.py</code>。</span>
+</div>
+{% endif %}
+
+<main class="grid">
+
+  <section class="panel">
+    <div class="panel-head">
+      <strong data-i18n="USB · 可見光">USB · 可見光</strong>
+      <span class="muted" id="fps-rgb">—</span>
+    </div>
+    <img class="feed" src="{{ url_for('video_rgb') }}" alt="USB visible-light feed">
+    <p class="meta" data-i18n="工廠紅外截止濾鏡仍在 · 只看得到可見紅光">工廠紅外截止濾鏡仍在 · 只看得到可見紅光</p>
+  </section>
+
+  <section class="panel">
+    <div class="panel-head">
+      <strong data-i18n="NoIR · 可見光＋近紅外">NoIR · 可見光＋近紅外</strong>
+      <span class="muted" id="fps-noir">—</span>
+    </div>
+    <img class="feed" src="{{ url_for('video_noir') }}" alt="NoIR near-infrared feed">
+    <p class="meta" data-i18n="已移除紅外截止濾鏡 · 紅色通道同時看到紅光與近紅外">已移除紅外截止濾鏡 · 紅色通道同時看到紅光與近紅外</p>
+  </section>
+
+  <section class="panel wide">
+    <div class="panel-head">
+      <strong data-i18n="NDVI 熱圖">NDVI 熱圖</strong>
+      <span class="muted" id="mean-ndvi">—</span>
+    </div>
+    <img class="feed" src="{{ url_for('video_ndvi') }}" alt="NDVI false-colour heatmap">
+    <p class="meta" data-i18n="NIR = max(Red_NoIR − k·Red_USB, 0)　NDVI = (NIR − Red_USB) / (NIR + Red_USB)">NIR = max(Red_NoIR − k·Red_USB, 0)　NDVI = (NIR − Red_USB) / (NIR + Red_USB)</p>
+  </section>
+
+  <section class="panel">
+    <div class="panel-head"><strong data-i18n="NDVI 色階">NDVI 色階</strong></div>
+    <ul class="legend">
+      {% for band in state.legend %}
+      <li><i style="background:{{ band.color }}"></i>
+        <b>{{ band.range }}</b>
+        <span class="muted">{{ band.desc }}</span></li>
+      {% endfor %}
+    </ul>
+    <p class="meta" data-i18n="色階由實際渲染路徑取樣，與熱圖永遠一致">色階由實際渲染路徑取樣，與熱圖永遠一致</p>
+  </section>
+
+  <section class="panel">
+    <div class="panel-head"><strong data-i18n="狀態">狀態</strong></div>
+    <table class="stats">
+      <tr><td data-i18n="感測器模式">感測器模式</td><td id="s-mode">{{ state.mode }}</td></tr>
+      <tr><td>NDVI</td><td id="s-online">{{ 'ONLINE' if state.ndvi_online else 'OFFLINE' }}</td></tr>
+      <tr><td data-i18n="幾何校準">幾何校準</td><td id="s-calib">{{ 'YES' if state.calibrated else 'NO' }}</td></tr>
+      <tr><td data-i18n="輻射增益 k">輻射增益 k</td><td id="s-k">{{ state.k }}</td></tr>
+      <tr><td data-i18n="色階範圍">色階範圍</td><td id="s-window">{{ state.window[0] }} … {{ state.window[1] }}</td></tr>
+      <tr><td data-i18n="平均 NDVI">平均 NDVI</td><td id="s-mean">—</td></tr>
+    </table>
+  </section>
+
+</main>
+
+<footer>
+  <span data-i18n="雙感測器 NDVI · OpenCV + NumPy + Flask · 無機器學習模型">雙感測器 NDVI · OpenCV + NumPy + Flask · 無機器學習模型</span>
+</footer>
+
+<script>
+let lang = 'zh-Hant';
+try { lang = localStorage.getItem('odin-language') === 'en' ? 'en' : 'zh-Hant'; } catch {}
+
+const translations = {
+  "ODIN · 光學雙光譜智慧節點": "ODIN · Optical Dual-Spectrum Intelligence Node",
+  "雙光譜 NDVI 監看": "Dual-Spectrum NDVI Monitor",
+  "NoIR + USB 攝影機 → 通道相減 → NDVI 熱圖": "NoIR + USB camera → channel subtraction → NDVI heatmap",
+  "NDVI 離線": "NDVI offline",
+  "NDVI 需要兩顆感測器。目前只開到一顆，熱圖已停用，不以假資料取代。":
+    "NDVI needs two sensors. Only one opened, so the heatmap is disabled rather than faked.",
+  "尚未校準": "Not calibrated",
+  "兩張影像尚未註冊。NDVI 會在未對齊的畫面上計算，僅供煙霧測試，不可當讀數。執行 python calibrate.py。":
+    "Frames are not registered. NDVI is computed on misaligned input — a smoke test, not a reading. Run python calibrate.py.",
+  "USB · 可見光": "USB · Visible",
+  "NoIR · 可見光＋近紅外": "NoIR · Visible + near-infrared",
+  "NDVI 熱圖": "NDVI heatmap",
+  "工廠紅外截止濾鏡仍在 · 只看得到可見紅光": "Factory IR-cut filter intact · visible red only",
+  "已移除紅外截止濾鏡 · 紅色通道同時看到紅光與近紅外": "IR-cut filter removed · red channel sees visible red and NIR",
+  "NIR = max(Red_NoIR − k·Red_USB, 0)　NDVI = (NIR − Red_USB) / (NIR + Red_USB)":
+    "NIR = max(Red_NoIR − k·Red_USB, 0)   NDVI = (NIR − Red_USB) / (NIR + Red_USB)",
+  "NDVI 色階": "NDVI colour scale",
+  "色階由實際渲染路徑取樣，與熱圖永遠一致": "Swatches sampled from the render path, so the key can't drift from the image",
+  "狀態": "Status",
+  "感測器模式": "Sensor mode",
+  "幾何校準": "Geometric calibration",
+  "輻射增益 k": "Radiometric gain k",
+  "色階範圍": "Colour window",
+  "平均 NDVI": "Mean NDVI",
+  "雙感測器 NDVI · OpenCV + NumPy + Flask · 無機器學習模型":
+    "Dual-sensor NDVI · OpenCV + NumPy + Flask · no ML models"
+};
+
+const t = key => (lang === 'en' ? (translations[key] ?? key) : key);
+
+function applyLanguage() {
+  document.documentElement.lang = lang;
+  document.title = 'ODIN · ' + t('雙光譜 NDVI 監看');
+  document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = t(el.dataset.i18n); });
+  document.getElementById('language').value = lang;
+}
+
+document.getElementById('language').onchange = e => {
+  lang = e.target.value;
+  try { localStorage.setItem('odin-language', lang); } catch {}
+  applyLanguage();
+};
+
+async function poll() {
+  try {
+    const s = await (await fetch('/api/state')).json();
+    const mean = document.getElementById('s-mean');
+    if (mean) mean.textContent = s.mean_ndvi == null ? '—' : s.mean_ndvi.toFixed(3);
+    const el = document.getElementById('mean-ndvi');
+    if (el) el.textContent = s.mean_ndvi == null ? '—' : 'mean ' + s.mean_ndvi.toFixed(3);
+  } catch {}
+  setTimeout(poll, 1000);
+}
+
+applyLanguage();
+poll();
+</script>
+</body>
+</html>
