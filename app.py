@@ -165,8 +165,8 @@ class Pipeline:
                   'ndvi': heat if heat is not None else _plate(reason)}
         if self.demo:
             for frame in output.values():
-                cv2.putText(frame, 'SIMULATION - NOT A MEASUREMENT', (10, 30),
-                            cv2.FONT_HERSHEY_SIMPLEX, .55, (255,255,255), 2)
+                cv2.putText(frame, 'Demo', (10, 24),
+                            cv2.FONT_HERSHEY_SIMPLEX, .45, (255,255,255), 1)
         jpeg = {key: _mjpeg(frame) for key, frame in output.items()}
         with self._condition:
             self._healthy, self.errors = healthy, errors

@@ -32,7 +32,7 @@ python -m unittest discover -v
 python app.py --demo
 ```
 
-Open **http://127.0.0.1:8080**. Three synthetic regions exercise high, neutral and low estimated NIR contrast. At `k=1`, their unannotated pixels have indices `0.75`, `0.0` and `-0.5`. Text overlays alter some input pixels. All simulated streams carry a watermark; the API reports `simulation: true` and `ndvi_online: false`.
+Open **http://127.0.0.1:8080**. Three synthetic regions exercise high, neutral and low estimated NIR contrast. At `k=1`, their unannotated pixels have indices `0.75`, `0.0` and `-0.5`. Text overlays alter some input pixels. All simulated streams carry a small Demo label; the API reports `simulation: true` and `ndvi_online: false`.
 
 The default server binds to the local machine. For a trusted local network, use `--host 0.0.0.0` and open the laptop/Pi's LAN address. This development dashboard has no authentication; it is not a public deployment.
 

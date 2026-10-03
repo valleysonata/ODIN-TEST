@@ -35,9 +35,9 @@ python3 app.py --demo --host 0.0.0.0
 
 For an existing checkout, inspect `git status`, preserve any local work, then use `git pull --ff-only`. If the push is still pending, transfer the provided source ZIP instead: the original repository has no `--demo` flag.
 
-Open `http://<PI-IP>:8080` on a laptop on the same network. Check all three watermarked streams, the language switch, state polling and SIMULATION badge. Campus Wi-Fi may isolate devices; use Ethernet or a shared hotspot if the devices cannot reach one another. Keep a laptop demo fallback.
+Open `http://<PI-IP>:8080` on a laptop on the same network. Check all three watermarked streams, the language switch, state polling and Demo image label. Campus Wi-Fi may isolate devices; use Ethernet or a shared hotspot if the devices cannot reach one another. Keep a laptop demo fallback.
 
-Acceptance: tests pass on the Pi, all three browser streams load, status says SIMULATION, and mean/FPS update. This proves the software deployment, not spectral sensing.
+Acceptance: tests pass on the Pi, all three browser streams load, images show Demo and the API reports simulation: true, and mean/FPS update. This proves the software deployment, not spectral sensing.
 
 ## 2. Identify cameras when they arrive
 

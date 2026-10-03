@@ -1,165 +1,105 @@
 <!doctype html>
-<html lang="zh-Hant">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>ODIN · 雙光譜 NDVI 監看</title>
+<title>Dual Spectrum NDVI Monitor</title>
 <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-
 <header>
-  <div class="brand">
-    <small data-i18n="ODIN · 光學雙光譜智慧節點">ODIN · 光學雙光譜智慧節點</small>
-    <h1 data-i18n="雙光譜 NDVI 監看">雙光譜 NDVI 監看</h1>
-    <small data-i18n="NoIR + USB 攝影機 → 通道相減 → NDVI 熱圖">NoIR + USB 攝影機 → 通道相減 → NDVI 熱圖</small>
-  </div>
+  <h1>Dual Spectrum NDVI Monitor</h1>
   <img class="brand-logo" src="{{ url_for('static', filename='odin-logo.png') }}" alt="ODIN Technologies" width="400" height="247">
 </header>
-<div class="tools">
-  <span id="mode-badge" class="badge">{{ state.status }}</span>
-  <span id="calib-badge" class="badge">{{ 'SYNTHETIC INPUT' if state.simulation else ('CALIBRATED' if state.calibrated else 'NOT CALIBRATED') }}</span>
-  <select id="language" aria-label="Language / 語言">
-    <option value="zh-Hant">中文</option>
-    <option value="en">English</option>
-  </select>
-</div>
-
-<p id="notice" class="notice">Experimental spectral index · {{ 'Generated inputs for demonstration.' if state.simulation else 'Hardware measurement validation pending.' }}</p>
-
-<main class="grid">
-
-  <section class="panel">
-    <div class="panel-head">
-      <strong data-i18n="USB · 可見光">USB · 可見光</strong>
-      <span class="muted" id="fps-rgb">—</span>
+<main>
+  <section class="section" aria-labelledby="cameras-title">
+    <h2 id="cameras-title" data-label="Camera feeds">Camera feeds</h2>
+    <div class="camera-grid">
+      <div>
+        <div class="panel-head"><h3>RGB</h3><span id="fps-rgb" class="muted">—</span></div>
+        <img class="feed" src="{{ url_for('video', key='rgb') }}" alt="RGB camera feed">
+      </div>
+      <div>
+        <div class="panel-head"><h3>NoIR</h3><span id="fps-noir" class="muted">—</span></div>
+        <img class="feed" src="{{ url_for('video', key='noir') }}" alt="NoIR camera feed">
+      </div>
     </div>
-    <img class="feed" src="{{ url_for('video', key='rgb') }}" alt="USB visible-light feed">
-    <p class="meta" data-i18n="工廠紅外截止濾鏡仍在 · 只看得到可見紅光">工廠紅外截止濾鏡仍在 · 只看得到可見紅光</p>
   </section>
-
-  <section class="panel">
-    <div class="panel-head">
-      <strong data-i18n="NoIR · 可見光＋近紅外">NoIR · 可見光＋近紅外</strong>
-      <span class="muted" id="fps-noir">—</span>
-    </div>
-    <img class="feed" src="{{ url_for('video', key='noir') }}" alt="NoIR near-infrared feed">
-    <p class="meta" data-i18n="已移除紅外截止濾鏡 · 紅色通道同時看到紅光與近紅外">已移除紅外截止濾鏡 · 紅色通道同時看到紅光與近紅外</p>
+  <section class="section" aria-labelledby="map-title">
+    <div class="panel-head"><h2 id="map-title" data-label="NDVI map">NDVI map</h2><span class="muted" id="mean-ndvi">—</span></div>
+    <img class="feed map-feed" src="{{ url_for('video', key='ndvi') }}" alt="NDVI map">
   </section>
-
-  <section class="panel wide">
-    <div class="panel-head">
-      <strong data-i18n="NDVI 熱圖">NDVI 熱圖</strong>
-      <span class="muted" id="mean-ndvi">—</span>
-    </div>
-    <img class="feed" src="{{ url_for('video', key='ndvi') }}" alt="NDVI false-colour heatmap">
-    <p class="meta" data-i18n="NIR = max(Red_NoIR − k·Red_USB, 0)　NDVI = (NIR − Red_USB) / (NIR + Red_USB)">NIR = max(Red_NoIR − k·Red_USB, 0)　NDVI = (NIR − Red_USB) / (NIR + Red_USB)</p>
-  </section>
-
-  <section class="panel">
-    <div class="panel-head"><strong data-i18n="NDVI 色階">NDVI 色階</strong></div>
-    <ul class="legend">
-      {% for band in state.legend %}
-      <li><i style="background:{{ band.color }}"></i>
-        <b>{{ band.range }}</b>
-        <span class="muted">{{ band.desc }}</span></li>
-      {% endfor %}
-    </ul>
-    <p class="meta" data-i18n="色階由實際渲染路徑取樣，與熱圖永遠一致">色階由實際渲染路徑取樣，與熱圖永遠一致</p>
-  </section>
-
-  <section class="panel">
-    <div class="panel-head"><strong data-i18n="狀態">狀態</strong></div>
-    <table class="stats">
-      <tr><td data-i18n="感測器模式">感測器模式</td><td id="s-mode">{{ state.mode }}</td></tr>
-      <tr><td>NDVI</td><td id="s-online">{{ 'ONLINE' if state.ndvi_online else 'OFFLINE' }}</td></tr>
-      <tr><td data-i18n="幾何校準">幾何校準</td><td id="s-calib">{{ 'YES' if state.calibrated else 'NO' }}</td></tr>
-      <tr><td data-i18n="輻射增益 k">輻射增益 k</td><td id="s-k">{{ state.k }}</td></tr>
-      <tr><td data-i18n="色階範圍">色階範圍</td><td id="s-window">{{ state.window[0] }} … {{ state.window[1] }}</td></tr>
-      <tr><td>Valid area</td><td id="s-valid">—</td></tr>
-      <tr><td>Positive NIR in valid area</td><td id="s-nir">—</td></tr>
-      <tr><td>Capture diagnostics</td><td id="s-errors">—</td></tr>
-      <tr><td data-i18n="平均 NDVI">平均 NDVI</td><td id="s-mean">—</td></tr>
-    </table>
-  </section>
-
+  <div class="summary-grid">
+    <section class="section" aria-labelledby="scale-title">
+      <h2 id="scale-title" data-label="Scale">Scale</h2>
+      <ul class="legend">
+        {% for band in state.legend %}
+        <li><i style="background:{{ band.color }}" aria-hidden="true"></i><span>{{ band.range }}</span></li>
+        {% endfor %}
+      </ul>
+    </section>
+    <section class="section" aria-labelledby="readings-title">
+      <h2 id="readings-title" data-label="Readings">Readings</h2>
+      <table class="stats">
+        <tr><th data-label="Mean NDVI">Mean NDVI</th><td id="s-mean">—</td></tr>
+        <tr><th data-label="Valid area">Valid area</th><td id="s-valid">—</td></tr>
+        <tr><th data-label="Positive NIR">Positive NIR</th><td id="s-nir">—</td></tr>
+        <tr><th data-label="Gain">Gain</th><td>{{ state.k }}</td></tr>
+        <tr><th data-label="Range">Range</th><td>{{ state.window[0] }} … {{ state.window[1] }}</td></tr>
+      </table>
+    </section>
+    <section class="section" aria-labelledby="system-title">
+      <h2 id="system-title" data-label="System">System</h2>
+      <table class="stats">
+        <tr><th data-label="Connection">Connection</th><td id="connection">—</td></tr>
+        <tr><th>RGB</th><td id="rgb-state">—</td></tr>
+        <tr><th>NoIR</th><td id="noir-state">—</td></tr>
+        <tr><th data-label="Calibration">Calibration</th><td id="calibration">—</td></tr>
+        <tr><th><label for="language" data-label="Language">Language</label></th><td><select id="language"><option value="en">English</option><option value="zh-Hant">中文</option></select></td></tr>
+      </table>
+      <details id="diagnostics" hidden><summary data-label="Diagnostics">Diagnostics</summary><p id="s-errors"></p></details>
+    </section>
+  </div>
 </main>
-
-<footer>
-  <span data-i18n="雙感測器 NDVI · OpenCV + NumPy + Flask · 無機器學習模型">雙感測器 NDVI · OpenCV + NumPy + Flask · 無機器學習模型</span>
-</footer>
-
 <script>
-let lang = 'zh-Hant';
-try { lang = localStorage.getItem('odin-language') === 'en' ? 'en' : 'zh-Hant'; } catch {}
-
-const translations = {
-  "ODIN · 光學雙光譜智慧節點": "ODIN · Optical Dual-Spectrum Intelligence Node",
-  "雙光譜 NDVI 監看": "Dual-Spectrum NDVI Monitor",
-  "NoIR + USB 攝影機 → 通道相減 → NDVI 熱圖": "NoIR + USB camera → channel subtraction → NDVI heatmap",
-  "NDVI 離線": "NDVI offline",
-  "NDVI 需要兩顆感測器。目前只開到一顆，熱圖已停用，不以假資料取代。":
-    "NDVI needs two sensors. Only one opened, so the heatmap is disabled rather than faked.",
-  "尚未校準": "Not calibrated",
-  "兩張影像尚未註冊。NDVI 會在未對齊的畫面上計算，僅供煙霧測試，不可當讀數。執行 python calibrate.py。":
-    "Frames are not registered. NDVI is computed on misaligned input — a smoke test, not a reading. Run python calibrate.py.",
-  "USB · 可見光": "USB · Visible",
-  "NoIR · 可見光＋近紅外": "NoIR · Visible + near-infrared",
-  "NDVI 熱圖": "NDVI heatmap",
-  "工廠紅外截止濾鏡仍在 · 只看得到可見紅光": "Factory IR-cut filter intact · visible red only",
-  "已移除紅外截止濾鏡 · 紅色通道同時看到紅光與近紅外": "IR-cut filter removed · red channel sees visible red and NIR",
-  "NIR = max(Red_NoIR − k·Red_USB, 0)　NDVI = (NIR − Red_USB) / (NIR + Red_USB)":
-    "NIR = max(Red_NoIR − k·Red_USB, 0)   NDVI = (NIR − Red_USB) / (NIR + Red_USB)",
-  "NDVI 色階": "NDVI colour scale",
-  "色階由實際渲染路徑取樣，與熱圖永遠一致": "Swatches sampled from the render path, so the key can't drift from the image",
-  "狀態": "Status",
-  "感測器模式": "Sensor mode",
-  "幾何校準": "Geometric calibration",
-  "輻射增益 k": "Radiometric gain k",
-  "色階範圍": "Colour window",
-  "平均 NDVI": "Mean NDVI",
-  "雙感測器 NDVI · OpenCV + NumPy + Flask · 無機器學習模型":
-    "Dual-sensor NDVI · OpenCV + NumPy + Flask · no ML models"
-};
-
-const t = key => (lang === 'en' ? (translations[key] ?? key) : key);
-
+let lang = 'en';
+try { lang = localStorage.getItem('odin-language') === 'zh-Hant' ? 'zh-Hant' : 'en'; } catch {}
+const zh = {'Camera feeds':'攝影機','NDVI map':'NDVI 影像','Scale':'色階','Readings':'讀數','System':'系統','Mean NDVI':'平均 NDVI','Valid area':'有效區域','Positive NIR':'正值 NIR','Gain':'增益','Range':'範圍','Connection':'連線','Calibration':'校準','Language':'語言','Diagnostics':'診斷','Connected':'已連線','Disconnected':'未連線','Online':'啟用','Offline':'離線','Ready':'已校準','Required':'待校準','Mean':'平均'};
+const t = value => lang === 'zh-Hant' ? (zh[value] || value) : value;
 function applyLanguage() {
   document.documentElement.lang = lang;
-  document.title = 'ODIN · ' + t('雙光譜 NDVI 監看');
-  document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = t(el.dataset.i18n); });
+  document.querySelectorAll('[data-label]').forEach(el => el.textContent = t(el.dataset.label));
   document.getElementById('language').value = lang;
 }
-
 document.getElementById('language').onchange = e => {
   lang = e.target.value;
-  try { localStorage.setItem('odin-language', lang); } catch {}
+  try { localStorage.setItem('odin-language',lang); } catch {}
   applyLanguage();
 };
-
+const set = (id,value) => document.getElementById(id).textContent = value;
 async function poll() {
   try {
-    const s = await (await fetch('/api/state')).json();
-    const badge = document.getElementById('mode-badge');
-    badge.textContent = s.status;
-    badge.className = 'badge';
-    document.getElementById('calib-badge').textContent = s.simulation ? 'SYNTHETIC INPUT' : (s.calibrated ? 'CALIBRATED' : 'NOT CALIBRATED');
-    document.getElementById('s-mode').textContent = s.mode;
-    document.getElementById('s-online').textContent = s.simulation ? 'SIMULATED' : (s.ndvi_online ? 'ONLINE' : 'OFFLINE');
-    document.getElementById('s-calib').textContent = s.simulation ? 'N/A' : (s.calibrated ? 'YES' : 'NO');
-    document.getElementById('fps-rgb').textContent = s.fps.toFixed(1) + ' fps';
-    document.getElementById('fps-noir').textContent = s.sensors.noir ? 'Feed active' : 'Offline';
-    document.getElementById('s-valid').textContent = s.valid_fraction == null ? '—' : (100*s.valid_fraction).toFixed(1)+'%';
-    document.getElementById('s-nir').textContent = s.nir_positive_fraction == null ? '—' : (100*s.nir_positive_fraction).toFixed(1)+'%';
-    document.getElementById('s-errors').textContent = Object.values(s.errors).join('; ') || '—';
-    const mean = document.getElementById('s-mean');
-    if (mean) mean.textContent = s.mean_ndvi == null ? '—' : s.mean_ndvi.toFixed(3);
-    const el = document.getElementById('mean-ndvi');
-    if (el) el.textContent = s.mean_ndvi == null ? '—' : 'mean ' + s.mean_ndvi.toFixed(3);
-  } catch { document.getElementById('mode-badge').textContent = 'SERVER UNREACHABLE'; document.getElementById('mode-badge').className = 'badge'; }
-  setTimeout(poll, 1000);
+    const response = await fetch('/api/state');
+    if (!response.ok) throw new Error('State unavailable');
+    const s = await response.json();
+    set('connection',t('Connected'));
+    set('rgb-state',s.simulation ? '—' : t(s.sensors.rgb ? 'Online' : 'Offline'));
+    set('noir-state',s.simulation ? '—' : t(s.sensors.noir ? 'Online' : 'Offline'));
+    set('calibration',s.simulation ? '—' : t(s.calibrated ? 'Ready' : 'Required'));
+    set('fps-rgb',s.fps.toFixed(1)+' fps');
+    set('fps-noir',s.simulation ? '' : t(s.sensors.noir ? 'Online' : 'Offline'));
+    set('s-mean',s.mean_ndvi == null ? '—' : s.mean_ndvi.toFixed(3));
+    set('mean-ndvi',s.mean_ndvi == null ? '—' : t('Mean')+' '+s.mean_ndvi.toFixed(3));
+    set('s-valid',s.valid_fraction == null ? '—' : (100*s.valid_fraction).toFixed(1)+'%');
+    set('s-nir',s.nir_positive_fraction == null ? '—' : (100*s.nir_positive_fraction).toFixed(1)+'%');
+    set('s-errors',Object.values(s.errors).join('; '));
+    document.getElementById('diagnostics').hidden = Object.keys(s.errors).length === 0;
+  } catch {
+    ['connection','rgb-state','noir-state'].forEach(id => set(id,t('Disconnected')));
+    ['s-mean','mean-ndvi','s-valid','s-nir','fps-rgb','fps-noir','calibration'].forEach(id => set(id,'—'));
+  }
+  setTimeout(poll,1000);
 }
-
 applyLanguage();
 poll();
 </script>
