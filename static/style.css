@@ -1,12 +1,12 @@
 @font-face { font-family: 'Inter'; src: url('fonts/InterVariable.woff2') format('woff2'); font-weight: 100 900; font-style: normal; font-display: swap; }
 :root { color-scheme: dark; --bg: #0e1011; --line: #3b3b3b; --panel: #292929; --text: #ededed; --muted: #b0b0b0; }
 * { box-sizing: border-box; }
-body { margin: 0 auto; padding: 16px 24px; max-width: 1600px; height: 100vh; height: 100dvh; display: grid; grid-template-rows: 66px minmax(0,1fr); gap: 14px; background: var(--bg); color: var(--text); font-family: 'Inter', system-ui, -apple-system, sans-serif; font-size: 12px; }
+body { margin: 0 auto; padding: 16px 24px; max-width: 1600px; height: 100vh; height: 100dvh; display: grid; grid-template-rows: 66px auto; align-content: start; gap: 14px; background: var(--bg); color: var(--text); font-family: 'Inter', system-ui, -apple-system, sans-serif; font-size: 12px; }
 header { display: flex; justify-content: space-between; align-items: center; gap: 18px; }
 h1 { font-family: 'Inter', system-ui, -apple-system, sans-serif; font-size: clamp(24px,2.7vw,40px); font-weight: 700; margin: 0; letter-spacing: -1px; }
 .brand-logo { width: 116px; height: auto; display: block; flex: none; }
-main { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); grid-template-rows: minmax(0,1fr) 206px; gap: 14px; min-height: 0; }
-.section { min-width: 0; min-height: 0; border: 0; border-radius: 8px; background: var(--panel); padding: 12px 14px; display: flex; flex-direction: column; }
+main { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); grid-template-rows: auto 206px; align-content: start; width: 100%; margin-inline: auto; gap: 14px; min-height: 0; }
+.section { min-width: 0; min-height: 0; border: 0; border-radius: 8px; background: var(--panel); padding: 12px 14px; display: flex; flex-direction: column; align-self: start; }
 h2 { font-size: 13px; font-weight: 500; margin: 0 0 12px; flex: none; }
 h3 { font-size: 12px; font-weight: 400; margin: 0; }
 .camera-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 14px; flex: 1; min-height: 0; }
@@ -14,8 +14,9 @@ h3 { font-size: 12px; font-weight: 400; margin: 0; }
 .panel-head { height: 20px; line-height: 16px; display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 9px; flex: none; }
 .panel-head h2 { margin: 0; }
 .muted { color: var(--muted); font-size: 10px; }
-.feed { display: block; width: 100%; height: 0; min-height: 0; flex: 1; object-fit: contain; background: #202020; border-radius: 5px; }
+.feed { display: block; width: 100%; height: auto; min-height: 0; flex: none; background: #202020; border-radius: 5px; }
 .summary-grid { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 14px; grid-column: 1/-1; min-height: 0; }
+.summary-grid .section { height: 100%; }
 .legend { list-style: none; margin: 0; padding: 0; }
 .legend li { display: flex; align-items: center; gap: 10px; height: 29px; border-bottom: 0; font-size: 11px; }
 .legend i { width: 12px; height: 12px; flex: none; border: 0; border-radius: 2px; }
@@ -28,4 +29,4 @@ select option { background: var(--bg); }
 details { position: relative; color: var(--muted); margin-top: 7px; font-size: 10px; }
 details[open] p { position: absolute; bottom: 18px; right: 0; left: 0; padding: 12px; margin: 0; border: 1px solid var(--line); background: #171717; z-index: 2; overflow-wrap: anywhere; max-height: 160px; overflow-y: auto; }
 summary { cursor: pointer; }
-@media (max-width: 680px) { body { height: auto; min-height: 100dvh; padding: 14px; grid-template-rows: auto 1fr; } header { min-height: 56px; gap: 12px; } h1 { font-size: 22px; letter-spacing: -.5px; } .brand-logo { width: 80px; } main { grid-template-columns: 1fr; grid-template-rows: auto; } .section { min-height: 200px; } .feed { height: auto; aspect-ratio: 4/3; flex: none; } .summary-grid { grid-template-columns: 1fr; } }
+@media (max-width: 680px) { body { height: auto; min-height: 100dvh; padding: 14px; grid-template-rows: auto 1fr; } header { min-height: 56px; gap: 12px; } h1 { font-size: 22px; letter-spacing: -.5px; } .brand-logo { width: 80px; } main { grid-template-columns: 1fr; grid-template-rows: auto; } .section { min-height: 0; } .feed { height: auto; flex: none; } .summary-grid { grid-template-columns: 1fr; } }

@@ -72,6 +72,28 @@ document.getElementById('language').onchange = e => {
   applyLanguage();
 };
 const set = (id,value) => document.getElementById(id).textContent = value;
+function fitLayout() {
+  const main = document.querySelector('main');
+  if (window.innerWidth <= 680) { main.style.maxWidth = ''; return; }
+  const body = document.body;
+  const style = getComputedStyle(body);
+  const mainStyle = getComputedStyle(main);
+  const cards = [...main.children].filter(el => el.classList.contains('section'));
+  const gap = parseFloat(mainStyle.gap);
+  const summary = document.querySelector('.summary-grid');
+  const remaining = window.innerHeight - main.getBoundingClientRect().top - parseFloat(style.paddingBottom) - summary.offsetHeight - gap;
+  const ratios = cards.map(card => {
+    const img = card.querySelector('.feed');
+    const cs = getComputedStyle(card);
+    const overhead = parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom) + card.querySelector('.panel-head').offsetHeight + parseFloat(getComputedStyle(card.querySelector('.panel-head')).marginBottom);
+    const padding = parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight);
+    const ratio = img.naturalWidth && img.naturalHeight ? img.naturalWidth/img.naturalHeight : 4/3;
+    return Math.max(0,remaining-overhead)*ratio+padding;
+  });
+  main.style.maxWidth = Math.floor(Math.min(...ratios)*3+gap*2)+'px';
+}
+window.addEventListener('resize',fitLayout);
+document.querySelectorAll('.feed').forEach(img => img.addEventListener('load',fitLayout));
 async function poll() {
   try {
     const response = await fetch('/api/state');
@@ -93,6 +115,7 @@ async function poll() {
     ['connection','rgb-state','noir-state'].forEach(id => set(id,t('Disconnected')));
     ['s-mean','mean-ndvi','s-valid','s-nir','fps-rgb','fps-noir','calibration'].forEach(id => set(id,'—'));
   }
+  fitLayout();
   setTimeout(poll,1000);
 }
 applyLanguage();
