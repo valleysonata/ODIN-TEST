@@ -73,18 +73,19 @@ select, button {
 
 .grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 16px;
   margin-top: 22px;
 }
 
 .panel {
+  min-width: 0;
   background: var(--panel);
   border: 1px solid var(--line);
   border-radius: 12px;
   padding: 16px;
 }
-.panel.wide { grid-column: span 3; }
+.panel.wide { grid-column: span 2; }
 
 .panel-head {
   display: flex;
@@ -133,7 +134,7 @@ select, button {
 .legend b { min-width: 66px; font-weight: 600; }
 
 .stats { width: 100%; border-collapse: collapse; font-size: 13.5px; }
-.stats td { padding: 9px 0; border-bottom: 1px solid #1e2937; }
+.stats td { overflow-wrap: anywhere; padding: 9px 0; border-bottom: 1px solid #1e2937; }
 .stats tr:last-child td { border-bottom: none; }
 .stats td:last-child {
   text-align: right;

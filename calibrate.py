@@ -18,24 +18,35 @@ from __future__ import annotations
 
 import argparse
 import sys
+from pathlib import Path
 import time
+
+from sensors import Sensor
+from app import valid_homography
 
 import cv2
 import numpy as np
 
-DEFAULT_OUT = "matrix_h.npy"
+DEFAULT_OUT = str(Path(__file__).with_name("matrix_h.npy"))
 
 
-def open_capture(src, label: str) -> cv2.VideoCapture:
-    cap = cv2.VideoCapture(src if isinstance(src, int) else str(src))
-    if not cap.isOpened():
-        raise SystemExit(f"[calibrate] cannot open {label} source: {src!r}")
-    return cap
+def open_capture(src, label, size=(640, 480)):
+    try:
+        return Sensor(src, label, size)
+    except Exception as exc:
+        raise SystemExit(f"[calibrate] cannot open {label}: {exc}") from exc
 
 
-def grab(cap: cv2.VideoCapture) -> np.ndarray | None:
-    ok, frame = cap.read()
-    return frame if ok else None
+def grab(cap):
+    return cap.read()
+
+
+def reprojection_error(src, dst, H, mask):
+    keep = np.asarray(mask).reshape(-1).astype(bool)
+    if not keep.any() or not valid_homography(H):
+        raise ValueError('invalid homography or empty inlier set')
+    projected = cv2.perspectiveTransform(src[keep], H)
+    return float(np.linalg.norm(projected - dst[keep], axis=2).mean())
 
 
 def match_pair(noir_bgr: np.ndarray, rgb_bgr: np.ndarray, orb, matcher):
@@ -48,7 +59,8 @@ def match_pair(noir_bgr: np.ndarray, rgb_bgr: np.ndarray, orb, matcher):
         return None, None
     raw = matcher.knnMatch(da, db, k=2)
     # Lowe ratio test: keep a match only if it is clearly better than 2nd.
-    good = [m for m, n in raw if m.distance < 0.75 * n.distance]
+    good = [pair[0] for pair in raw if len(pair) == 2
+            and pair[0].distance < 0.75 * pair[1].distance]
     if len(good) < 8:
         return None, None
     src = np.float32([ka[m.queryIdx].pt for m in good]).reshape(-1, 1, 2)
@@ -62,6 +74,8 @@ def main() -> int:
     ap.add_argument("--noir", default="1", help="NoIR source (index, path or URL)")
     ap.add_argument("--rgb", default="0", help="USB webcam source (index, path or URL)")
     ap.add_argument("--pairs", type=int, default=30, help="frame pairs to sample")
+    ap.add_argument("--width", type=int, default=640)
+    ap.add_argument("--height", type=int, default=480)
     ap.add_argument("--out", default=DEFAULT_OUT)
     ap.add_argument("--min-inliers", type=int, default=25,
                     help="refuse to save below this many RANSAC inliers")
@@ -72,8 +86,19 @@ def main() -> int:
     noir_src = int(args.noir) if str(args.noir).isdigit() else args.noir
     rgb_src = int(args.rgb) if str(args.rgb).isdigit() else args.rgb
 
-    cap_n = open_capture(noir_src, "NoIR")
-    cap_r = open_capture(rgb_src, "RGB")
+    if str(noir_src) == str(rgb_src):
+        ap.error('calibration requires two different sources')
+    if args.pairs < 4 or args.min_inliers < 4 or not np.isfinite(args.max_reproj) or args.max_reproj <= 0:
+        ap.error('pairs and min-inliers must be >= 4; max-reproj must be finite and positive')
+    if min(args.width, args.height) < 32:
+        ap.error("width and height must be >= 32")
+    size = (args.width, args.height)
+    cap_n = open_capture(noir_src, "NoIR", size)
+    try:
+        cap_r = open_capture(rgb_src, "RGB", size)
+    except BaseException:
+        cap_n.release()
+        raise
     orb = cv2.ORB_create(nfeatures=1500)
     matcher = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=False)
 
@@ -85,25 +110,27 @@ def main() -> int:
     src_all, dst_all = [], []
     attempts = 0
     deadline = time.time() + 60
-    while len(src_all) < args.pairs and time.time() < deadline:
-        attempts += 1
-        noir, rgb = grab(cap_n), grab(cap_r)
-        if noir is None or rgb is None:
-            time.sleep(0.03)
-            if time.time() > deadline:
-                break
-            continue
-        src, dst = match_pair(noir, rgb, orb, matcher)
-        if src is not None:
-            src_all.append(src)
-            dst_all.append(dst)
-        if attempts % 15 == 0:
-            print(f"[calibrate] {len(src_all)}/{args.pairs} usable pairs "
-                  f"({attempts} attempts)")
-        time.sleep(0.04)
+    try:
+        while len(src_all) < args.pairs and time.time() < deadline:
+            attempts += 1
+            noir, rgb = grab(cap_n), grab(cap_r)
+            if noir is None or rgb is None:
+                time.sleep(0.03)
+                if time.time() > deadline:
+                    break
+                continue
+            src, dst = match_pair(noir, rgb, orb, matcher)
+            if src is not None:
+                src_all.append(src)
+                dst_all.append(dst)
+            if attempts % 15 == 0:
+                print(f"[calibrate] {len(src_all)}/{args.pairs} usable pairs "
+                      f"({attempts} attempts)")
+            time.sleep(0.04)
 
-    cap_n.release()
-    cap_r.release()
+    finally:
+        cap_n.release()
+        cap_r.release()
 
     if len(src_all) < 4:
         print(f"[calibrate] FAIL: only {len(src_all)} usable pairs. "
@@ -119,8 +146,11 @@ def main() -> int:
         return 3
 
     inliers = int(mask.sum())
-    proj = cv2.perspectiveTransform(src[mask], H)
-    reproj = float(np.linalg.norm(proj - dst[mask], axis=2).mean())
+    try:
+        reproj = reprojection_error(src, dst, H, mask)
+    except ValueError as exc:
+        print(f"[calibrate] FAIL: {exc}", file=sys.stderr)
+        return 3
 
     print(f"\n[calibrate] pairs sampled : {len(src_all)}")
     print(f"[calibrate] matches       : {len(src)}")
@@ -132,7 +162,7 @@ def main() -> int:
               f"Target is under-textured; move closer or print a real pattern.",
               file=sys.stderr)
         return 4
-    if reproj > args.max_reproj:
+    if not np.isfinite(reproj) or reproj > args.max_reproj:
         print(f"[calibrate] FAIL: {reproj:.2f}px > --max-reproj {args.max_reproj}. "
               f"Model does not fit -- not saving.", file=sys.stderr)
         return 5
@@ -141,7 +171,7 @@ def main() -> int:
     print(f"[calibrate] saved {args.out}")
     print("[calibrate] NOTE: a homography maps a single plane exactly. It will")
     print("[calibrate] be accurate on the calibration target and degrade with")
-    print("[calibrate] depth -- the two lenses are ~2.5 cm apart, so 3D subjects")
+    print("[calibrate] depth -- separated lenses mean that 3D subjects")
     print("[calibrate] carry parallax no H can remove. Recalibrate if the bracket")
     print("[calibrate] moves, and keep the subject inside the overlap region.")
     return 0

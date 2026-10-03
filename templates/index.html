@@ -19,26 +19,15 @@
       <option value="zh-Hant">中文</option>
       <option value="en">English</option>
     </select>
-    <span id="mode-badge" class="badge {{ 'ok' if state.ndvi_online else 'warn' }}">
-      {{ '● NDVI ONLINE' if state.ndvi_online else '● SINGLE SENSOR' }}
-    </span>
-    <span id="calib-badge" class="badge {{ 'ok' if state.calibrated else 'warn' }}">
-      {{ '● CALIBRATED' if state.calibrated else '● NOT CALIBRATED' }}
-    </span>
+    <span id="mode-badge" class="badge {{ 'ok' if state.ndvi_online else 'warn' }}">● {{ state.status }}</span>
+    <span id="calib-badge" class="badge warn">{{ 'SYNTHETIC INPUT' if state.simulation else ('CALIBRATED' if state.calibrated else 'NOT CALIBRATED') }}</span>
   </div>
 </header>
 
-{% if not state.ndvi_online %}
-<div class="notice warn">
-  <strong data-i18n="NDVI 離線">NDVI 離線</strong> —
-  <span data-i18n="NDVI 需要兩顆感測器。目前只開到一顆，熱圖已停用，不以假資料取代。">NDVI 需要兩顆感測器。目前只開到一顆，熱圖已停用，不以假資料取代。</span>
+<div id="notice" class="notice warn">
+  Experimental spectral index. Hardware accuracy and material classification are unvalidated.
+  Simulation uses generated inputs, not camera measurements. Live heatmaps require two healthy sensors and calibration.
 </div>
-{% elif not state.calibrated %}
-<div class="notice warn">
-  <strong data-i18n="尚未校準">尚未校準</strong> —
-  <span data-i18n="兩張影像尚未註冊。NDVI 會在未對齊的畫面上計算，僅供煙霧測試，不可當讀數。執行 python calibrate.py。">兩張影像尚未註冊。NDVI 會在未對齊的畫面上計算，僅供煙霧測試，不可當讀數。執行 <code>python calibrate.py</code>。</span>
-</div>
-{% endif %}
 
 <main class="grid">
 
@@ -47,7 +36,7 @@
       <strong data-i18n="USB · 可見光">USB · 可見光</strong>
       <span class="muted" id="fps-rgb">—</span>
     </div>
-    <img class="feed" src="{{ url_for('video_rgb') }}" alt="USB visible-light feed">
+    <img class="feed" src="{{ url_for('video', key='rgb') }}" alt="USB visible-light feed">
     <p class="meta" data-i18n="工廠紅外截止濾鏡仍在 · 只看得到可見紅光">工廠紅外截止濾鏡仍在 · 只看得到可見紅光</p>
   </section>
 
@@ -56,7 +45,7 @@
       <strong data-i18n="NoIR · 可見光＋近紅外">NoIR · 可見光＋近紅外</strong>
       <span class="muted" id="fps-noir">—</span>
     </div>
-    <img class="feed" src="{{ url_for('video_noir') }}" alt="NoIR near-infrared feed">
+    <img class="feed" src="{{ url_for('video', key='noir') }}" alt="NoIR near-infrared feed">
     <p class="meta" data-i18n="已移除紅外截止濾鏡 · 紅色通道同時看到紅光與近紅外">已移除紅外截止濾鏡 · 紅色通道同時看到紅光與近紅外</p>
   </section>
 
@@ -65,7 +54,7 @@
       <strong data-i18n="NDVI 熱圖">NDVI 熱圖</strong>
       <span class="muted" id="mean-ndvi">—</span>
     </div>
-    <img class="feed" src="{{ url_for('video_ndvi') }}" alt="NDVI false-colour heatmap">
+    <img class="feed" src="{{ url_for('video', key='ndvi') }}" alt="NDVI false-colour heatmap">
     <p class="meta" data-i18n="NIR = max(Red_NoIR − k·Red_USB, 0)　NDVI = (NIR − Red_USB) / (NIR + Red_USB)">NIR = max(Red_NoIR − k·Red_USB, 0)　NDVI = (NIR − Red_USB) / (NIR + Red_USB)</p>
   </section>
 
@@ -89,6 +78,9 @@
       <tr><td data-i18n="幾何校準">幾何校準</td><td id="s-calib">{{ 'YES' if state.calibrated else 'NO' }}</td></tr>
       <tr><td data-i18n="輻射增益 k">輻射增益 k</td><td id="s-k">{{ state.k }}</td></tr>
       <tr><td data-i18n="色階範圍">色階範圍</td><td id="s-window">{{ state.window[0] }} … {{ state.window[1] }}</td></tr>
+      <tr><td>Valid area</td><td id="s-valid">—</td></tr>
+      <tr><td>Positive NIR in valid area</td><td id="s-nir">—</td></tr>
+      <tr><td>Capture diagnostics</td><td id="s-errors">—</td></tr>
       <tr><td data-i18n="平均 NDVI">平均 NDVI</td><td id="s-mean">—</td></tr>
     </table>
   </section>
@@ -150,11 +142,23 @@ document.getElementById('language').onchange = e => {
 async function poll() {
   try {
     const s = await (await fetch('/api/state')).json();
+    const badge = document.getElementById('mode-badge');
+    badge.textContent = '● ' + s.status;
+    badge.className = 'badge ' + (s.ndvi_online ? 'ok' : 'warn');
+    document.getElementById('calib-badge').textContent = s.simulation ? 'SYNTHETIC INPUT' : (s.calibrated ? 'CALIBRATED' : 'NOT CALIBRATED');
+    document.getElementById('s-mode').textContent = s.mode;
+    document.getElementById('s-online').textContent = s.simulation ? 'SIMULATED' : (s.ndvi_online ? 'ONLINE' : 'OFFLINE');
+    document.getElementById('s-calib').textContent = s.simulation ? 'N/A' : (s.calibrated ? 'YES' : 'NO');
+    document.getElementById('fps-rgb').textContent = s.fps.toFixed(1) + ' processed batches/s';
+    document.getElementById('fps-noir').textContent = s.sensors.noir ? 'Feed active' : 'Offline';
+    document.getElementById('s-valid').textContent = s.valid_fraction == null ? '—' : (100*s.valid_fraction).toFixed(1)+'%';
+    document.getElementById('s-nir').textContent = s.nir_positive_fraction == null ? '—' : (100*s.nir_positive_fraction).toFixed(1)+'%';
+    document.getElementById('s-errors').textContent = Object.values(s.errors).join('; ') || '—';
     const mean = document.getElementById('s-mean');
     if (mean) mean.textContent = s.mean_ndvi == null ? '—' : s.mean_ndvi.toFixed(3);
     const el = document.getElementById('mean-ndvi');
     if (el) el.textContent = s.mean_ndvi == null ? '—' : 'mean ' + s.mean_ndvi.toFixed(3);
-  } catch {}
+  } catch { document.getElementById('mode-badge').textContent = '● SERVER UNREACHABLE'; document.getElementById('mode-badge').className = 'badge warn'; }
   setTimeout(poll, 1000);
 }
 

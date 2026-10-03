@@ -1,21 +1,9 @@
-"""ODIN spectral engine: two-camera NDVI.
+"""Pure array operations for ODIN's experimental spectral index.
 
-Architecture
-------------
-The NoIR sensor has its IR-cut filter removed, so its **red channel** sees
-visible red *plus* near-infrared.  The USB webcam keeps its factory IR
-filter, so its **red channel** sees visible red only.  Subtracting one from
-the other isolates NIR:
-
-    NIR = max(Red_NoIR - k * Red_USB, 0)
-    NDVI = (NIR - Red_USB) / (NIR + Red_USB)
-
-``k`` is a radiometric gain that balances the two sensors' different quantum
-efficiency curves, Bayer dye transmissions and lens transmissions.  It is
-tuned once against a spectrally neutral target (grey card / bare dirt).
-
-Every function here is pure NumPy/OpenCV and has no I/O, so the maths can be
-exercised on a laptop with no cameras attached.
+NoIR red contains visible red and NIR sensitivity; subtracting scaled RGB red
+produces an approximation, not calibrated pure NIR reflectance. Consumer camera
+processing and different spectral responses can bias the result. See README.
+No capture or filesystem I/O is performed here.
 """
 from __future__ import annotations
 
@@ -88,6 +76,8 @@ def nir_valid_mask(noir_bgr: np.ndarray, rgb_bgr: np.ndarray, k: float = 1.0) ->
 def to_u8(ndvi_map: np.ndarray, window: tuple[float, float] = DEFAULT_WINDOW) -> np.ndarray:
     """Map NDVI through ``window`` onto [0, 255] as uint8."""
     lo, hi = window
+    if not np.isfinite([lo, hi]).all() or hi <= lo:
+        raise ValueError('window must contain finite increasing bounds')
     scaled = (ndvi_map - lo) / (hi - lo)
     return (np.clip(scaled, 0.0, 1.0) * 255.0).round().astype(np.uint8)
 
@@ -99,11 +89,11 @@ def colorize(ndvi_map: np.ndarray, window: tuple[float, float] = DEFAULT_WINDOW)
 
 # (label, representative NDVI, operator-facing description)
 BANDS = (
-    ("< 0.1", 0.00, "Water / bare soil"),
-    ("0.1 - 0.2", 0.15, "Sparse / stressed"),
-    ("0.2 - 0.4", 0.30, "Stressed"),
-    ("0.4 - 0.5", 0.45, "Moderate"),
-    ("> 0.5", 0.70, "Healthy vegetation"),
+    ("< 0.1", 0.00, "Low index (interpret with caution)"),
+    ("0.1 - 0.2", 0.15, "Low positive index"),
+    ("0.2 - 0.4", 0.30, "Intermediate index"),
+    ("0.4 - 0.5", 0.45, "Higher index"),
+    ("> 0.5", 0.70, "High index (vegetation candidate)"),
 )
 
 
