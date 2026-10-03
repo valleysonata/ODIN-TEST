@@ -10,13 +10,8 @@ from __future__ import annotations
 import cv2
 import numpy as np
 
-# NDVI -> colour window.
-#
-# This is deliberately NOT [-1.0, +1.0].  cv2.applyColorMap(COLORMAP_JET)
-# puts *green* at the midpoint, so mapping the full theoretical range makes
-# bare soil (NDVI ~ 0.0) land on 127 and render green -- which reads as
-# "stressed vegetation".  Starting the ramp at -0.2 pushes soil/water down
-# into the blue end so the legend matches what the operator actually sees.
+# Retain the calibrated display window; a muted sequential palette makes
+# lower values dark and higher values light without rainbow colors.
 DEFAULT_WINDOW: tuple[float, float] = (-0.2, 1.0)
 
 # Guard against 0/0 on pixels where both channels read black.
@@ -84,7 +79,12 @@ def to_u8(ndvi_map: np.ndarray, window: tuple[float, float] = DEFAULT_WINDOW) ->
 
 def colorize(ndvi_map: np.ndarray, window: tuple[float, float] = DEFAULT_WINDOW) -> np.ndarray:
     """False-colour NDVI heatmap as a BGR uint8 image."""
-    return cv2.applyColorMap(to_u8(ndvi_map, window), cv2.COLORMAP_JET)
+    indices = to_u8(ndvi_map, window)
+    # BGR endpoints: charcoal -> warm off-white. Same LUT for the legend.
+    low = np.array([35, 35, 35], dtype=np.float32)
+    high = np.array([186, 216, 226], dtype=np.float32)
+    lut = np.round(low + np.linspace(0, 1, 256)[:, None]*(high-low)).astype(np.uint8)
+    return lut[indices]
 
 
 # (label, representative NDVI, operator-facing description)
@@ -100,8 +100,7 @@ BANDS = (
 def _hex_for(value: float, window: tuple[float, float]) -> str:
     """Sample the *actual* render path for one NDVI value -> '#rrggbb'."""
     probe = np.array([[value]], dtype=np.float32)
-    idx = to_u8(probe, window)
-    b, g, r = cv2.applyColorMap(idx, cv2.COLORMAP_JET)[0, 0]
+    b, g, r = colorize(probe, window)[0, 0]
     return f"#{int(r):02x}{int(g):02x}{int(b):02x}"
 
 

@@ -76,9 +76,9 @@ Picamera2 is imported only when a `picamera2:N` source is requested. On Raspberr
 2. Read the BGR red channels as floating-point arrays.
 3. Estimate `NIR = max(NoIR_red - k * RGB_red, 0)`.
 4. Compute `index = (NIR - RGB_red) / (NIR + RGB_red + 1e-7)`.
-5. Map the index through the `[-0.2, 1.0]` window using OpenCV JET.
+5. Map the index through the `[-0.2, 1.0]` window using a muted sequential palette.
 
-JET represents lower values with blue, intermediate values with cyan/green/yellow, and higher values with orange/red. The legend samples the same renderer. These colors are index ranges, **not verified material labels**.
+The display represents lower values with dark charcoal and higher values with warm off-white. The legend samples the same renderer. These colors are index ranges, **not verified material labels**.
 
 Warp borders, near-black combined signals and saturated red channels are excluded from the displayed mean and painted dark gray. The API reports `valid_fraction` and `nir_positive_fraction`; the latter is a diagnostic, not a confidence score. A clipped subtraction is retained in the index and can represent poor gain/lighting as well as low estimated NIR.
 
