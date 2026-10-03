@@ -139,7 +139,7 @@ is included for geometric registration, not radiometric calibration.
 | `app.py` | Shared producer, readiness, cached streams and Flask API |
 | `calibrate.py` | ORB matching, RANSAC and reprojection diagnostics |
 | `test_engine.py`, `test_app.py` | Camera-free numeric, state, stream and calibration regression tests |
-| `templates/index.html`, `static/style.css` | Dashboard |
+| `templates/index.html`, `static/style.css` | Compact desktop dashboard; stacked mobile layout |
 | `docs/HARDWARE_RUNBOOK.md`, `docs/calibration_target.svg` | Pi bring-up and calibration procedure / printable texture |
 | `cad/` | Provisional adjustable base and measurement checklist |
 | `.github/workflows/tests.yml` | Camera-free software checks on pushes and PRs |
@@ -156,3 +156,5 @@ is included for geometric registration, not radiometric calibration.
 - [USGS: NDVI and red/NIR reflectance](https://www.usgs.gov/landsat-missions/landsat-normalized-difference-vegetation-index)
 - [Raspberry Pi camera software](https://www.raspberrypi.com/documentation/computers/camera_software.html)
 - [Picamera2 manual](https://datasheets.raspberrypi.com/camera/picamera2-manual.pdf)
+
+The Inter font is hosted locally in `static/fonts/` under the included SIL Open Font License.
