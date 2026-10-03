@@ -1,4 +1,4 @@
-# ODIN — Optical Dual-Spectrum Intelligence Node
+# ODIN (Optical Dual-Spectrum Intelligence Node)
 
 ODIN is a TDTH 2026 Hackathon prototype for comparing visible-red and near-infrared-sensitive camera images. It uses OpenCV, NumPy and Flask to display an **experimental vegetation contrast / NDVI estimate** in a browser.
 
